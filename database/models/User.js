@@ -13,6 +13,7 @@ const UserSchema = new Schema(
     },
     photoURL: { type: String, required: true },
     isVerified: { type: Boolean, required: true },
+    isConnected: { type: Boolean, default: false },
     points: { type: Number, default: 0 },
     refreshtoken: { type: String },
   },

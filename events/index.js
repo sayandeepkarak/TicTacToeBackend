@@ -1,4 +1,9 @@
 import { Server } from "socket.io";
+import { getPlayers } from "../controllers/getPlayers";
+import { cancleMatch } from "../controllers/cancelMatch";
+import { requestMatch } from "../controllers/requestMatch";
+import { verifySocketAccess } from "../middlewares/socketAccess";
+import { joinMatch } from "../controllers/joinMatch";
 import RoomModel from "../database/models/Room";
 
 const wins = [
@@ -12,66 +17,148 @@ const wins = [
   [2, 4, 6],
 ];
 
+const checkMatch = (allValues) => {
+  for (let i = 0; i < wins.length; i++) {
+    const first = allValues[wins[i][0]];
+    const second = allValues[wins[i][1]];
+    const third = allValues[wins[i][2]];
+    if (first === second && second === third && ["X", "O"].includes(third)) {
+      return wins[i];
+    }
+  }
+  return false;
+};
+
 const createSocketServer = (server) => {
   const io = new Server(server, { cors: ["http://localhost:5173/"] });
 
   const waitListPlayers = [];
 
-  io.on("connection", (socket) => {
-    const { name } = socket.handshake.query;
-    if (name) {
-      io.sockets.emit("newConnection");
-      console.log(`${name} connected`);
+  io.on("connection", async (socket) => {
+    const { accesstoken, matchId } = socket.handshake.query;
+
+    let userDetails = { userId: "", userName: "" };
+    if (accesstoken) {
+      await verifySocketAccess(
+        userDetails,
+        accesstoken,
+        socket,
+        Boolean(matchId)
+      );
+      const users = await io.sockets.fetchSockets();
+      socket.emit("newConnection", users.length);
+      console.log(`${userDetails.userName} connected`);
+
+      if (matchId) {
+        await joinMatch(matchId, userDetails.userId, socket);
+      }
+      io.sockets.emit("newConnection", users.length);
+    } else {
+      socket.disconnect();
     }
 
-    socket.on("getPlayers", async () => {
-      const users = await io.sockets.fetchSockets();
-      socket.emit("recieveAllPlayer", users.length);
+    socket.on("getPlayers", () => {
+      getPlayers(io, socket);
     });
 
     socket.on("cancelMatchMaking", () => {
-      waitListPlayers.splice(waitListPlayers.indexOf(socket.id));
-      console.log(waitListPlayers);
+      cancleMatch(waitListPlayers, userDetails.userId);
     });
 
     socket.on("requestMatch", async () => {
-      if (waitListPlayers.length > 0) {
-        console.log(waitListPlayers.length);
-
-        const users = [socket.id, waitListPlayers[0]];
-        try {
-          const newRoom = new RoomModel({
-            players: users,
-            simulation: Array(9).fill(""),
-          });
-          const { _id } = await newRoom.save();
-
-          socket.emit("successMatchMaking", _id, users);
-          io.to(users[1]).emit("successMatchMaking", _id, users);
-
-          waitListPlayers.splice(0, 1);
-        } catch (error) {
-          console.log(error);
-          console.log("Room creation failed");
-        }
-      } else {
-        waitListPlayers.push(socket.id);
-        socket.join(socket.id);
-      }
-      console.log(waitListPlayers);
+      requestMatch(waitListPlayers, socket, io, userDetails.userId);
     });
 
-    socket.on("updateSimulation", async (matchId) => {
+    socket.on("updateSimulation", async (position, matchId) => {
       try {
-        const data = await RoomModel.findById(matchId).select("simulations");
-        socket.emit("recieveSimlations", data);
-      } catch (err) {
-        console.log("Simlations find failed");
+        const data = await RoomModel.findById(matchId);
+        if (data.players[data.turn] === userDetails.userId) {
+          let newData = [...data.simulation];
+          newData[position] = data.turn ? "X" : "O";
+          const { simulation, round, points, turn, step } =
+            await RoomModel.findByIdAndUpdate(
+              matchId,
+              {
+                simulation: newData,
+                turn: data.turn ? 0 : 1,
+                step: data.step + 1,
+              },
+              { new: true }
+            );
+
+          let matchInfo = {
+            simulations: simulation,
+            round,
+            points,
+            turn,
+          };
+          socket.to(matchId).emit("takeMatchInfo", matchInfo);
+          socket.emit("takeMatchInfo", matchInfo);
+
+          if (step > 4) {
+            const result = checkMatch(simulation);
+            if (result) {
+              const { simulation, round, points, turn, step } =
+                await RoomModel.findByIdAndUpdate(
+                  matchId,
+                  {
+                    simulation: Array(9).fill(""),
+                    turn: 0,
+                    step: 0,
+                    round: data.round + 1,
+                    points: data.turn
+                      ? [data.points[0], data.points[1] + 1]
+                      : [data.points[0] + 1, data.points[1]],
+                  },
+                  { new: true }
+                );
+              matchInfo = {
+                simulations: simulation,
+                round,
+                points,
+                turn,
+                step,
+              };
+              socket.emit("getRoundWin", result);
+              socket.to(matchId).emit("getRoundWin", result);
+              setTimeout(() => {
+                socket.to(matchId).emit("finishRound", matchInfo);
+                socket.emit("finishRound", matchInfo);
+              }, 2000);
+            } else if (step === 9 && !result) {
+              const { simulation, round, points, turn, step } =
+                await RoomModel.findByIdAndUpdate(
+                  matchId,
+                  {
+                    simulation: Array(9).fill(""),
+                    turn: 0,
+                    step: 0,
+                    round: data.round + 1,
+                  },
+                  { new: true }
+                );
+              matchInfo = {
+                simulations: simulation,
+                round,
+                points,
+                turn,
+                step,
+              };
+              setTimeout(() => {
+                socket.to(matchId).emit("finishRound", matchInfo);
+                socket.emit("finishRound", matchInfo);
+              }, 2000);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(error);
       }
     });
 
     socket.on("disconnect", () => {
       io.sockets.emit("userLeft");
+      console.log(`${userDetails.userName} disconnected`);
     });
   });
 };
