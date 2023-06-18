@@ -1,77 +1,72 @@
 import { Server } from "socket.io";
+import { getPlayers } from "../controllers/getPlayers";
+import { cancleMatch } from "../controllers/cancelMatch";
+import { requestMatch } from "../controllers/requestMatch";
+import { verifySocketAccess } from "../middlewares/socketAccess";
+import { joinMatch } from "../controllers/joinMatch";
+import { simulate } from "../controllers/updateSimulation";
+import UserModel from "../database/models/User";
 import RoomModel from "../database/models/Room";
-
-const wins = [
-  [0, 1, 2],
-  [0, 3, 6],
-  [6, 7, 8],
-  [2, 5, 8],
-  [3, 4, 5],
-  [1, 4, 7],
-  [0, 4, 8],
-  [2, 4, 6],
-];
+import finishMatch from "../controllers/forceFinishMatch";
 
 const createSocketServer = (server) => {
   const io = new Server(server, { cors: ["http://localhost:5173/"] });
 
   const waitListPlayers = [];
 
-  io.on("connection", (socket) => {
-    const { name } = socket.handshake.query;
-    if (name) {
-      io.sockets.emit("newConnection");
-      console.log(`${name} connected`);
+  io.on("connection", async (socket) => {
+    let leftTimer = undefined;
+    const { accesstoken, matchId } = socket.handshake.query;
+    let userDetails = { userId: "", userName: "" };
+    if (accesstoken) {
+      await verifySocketAccess(userDetails, accesstoken, socket);
+      const users = await io.sockets.fetchSockets();
+      socket.emit("newConnection", users.length);
+      console.log(`${userDetails.userName} connected`);
+
+      if (matchId) {
+        await joinMatch(matchId, userDetails.userId, socket);
+        if (!leftTimer) {
+          socket.to(matchId).emit("opponentReconnect");
+        }
+      }
+      io.sockets.emit("newConnection", users.length);
+    } else {
+      socket.disconnect();
     }
 
-    socket.on("getPlayers", async () => {
-      const users = await io.sockets.fetchSockets();
-      socket.emit("recieveAllPlayer", users.length);
+    socket.on("getPlayers", () => {
+      getPlayers(io, socket);
     });
 
     socket.on("cancelMatchMaking", () => {
-      waitListPlayers.splice(waitListPlayers.indexOf(socket.id));
-      console.log(waitListPlayers);
+      cancleMatch(waitListPlayers, userDetails.userId);
     });
 
     socket.on("requestMatch", async () => {
-      if (waitListPlayers.length > 0) {
-        console.log(waitListPlayers.length);
-
-        const users = [socket.id, waitListPlayers[0]];
-        try {
-          const newRoom = new RoomModel({
-            players: users,
-            simulation: Array(9).fill(""),
-          });
-          const { _id } = await newRoom.save();
-
-          socket.emit("successMatchMaking", _id, users);
-          io.to(users[1]).emit("successMatchMaking", _id, users);
-
-          waitListPlayers.splice(0, 1);
-        } catch (error) {
-          console.log(error);
-          console.log("Room creation failed");
-        }
-      } else {
-        waitListPlayers.push(socket.id);
-        socket.join(socket.id);
-      }
-      console.log(waitListPlayers);
+      requestMatch(waitListPlayers, socket, io, userDetails.userId);
     });
 
-    socket.on("updateSimulation", async (matchId) => {
-      try {
-        const data = await RoomModel.findById(matchId).select("simulations");
-        socket.emit("recieveSimlations", data);
-      } catch (err) {
-        console.log("Simlations find failed");
+    socket.on("updateSimulation", async (position, matchId) => {
+      simulate(position, matchId, userDetails, socket);
+    });
+
+    socket.on("getRoomMembers", async () => {
+      if (matchId) {
+        const members = await io.to(matchId).fetchSockets();
+        socket.emit("takeRoomMembers", members.length);
       }
     });
 
     socket.on("disconnect", () => {
       io.sockets.emit("userLeft");
+      if (matchId) {
+        io.to(matchId).emit("opponentLeft");
+        setTimeout(() => {
+          finishMatch(matchId, userDetails, io);
+        }, 59000);
+      }
+      console.log(`${userDetails.userName} disconnected`);
     });
   });
 };

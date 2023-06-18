@@ -18,6 +18,10 @@ const createUser = async (req, res, next) => {
     return next(OwnError.invalidDataError());
   }
 
+  if (data.isAnonymous || !data.emailVerified) {
+    return next(OwnError.unAuthorizedError("User is not verified"));
+  }
+
   const isExist = await UserModel.findOne({ email: data.email });
   let id;
   if (!isExist) {

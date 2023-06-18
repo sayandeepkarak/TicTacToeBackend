@@ -32,7 +32,7 @@ const generatetoken = async (req, res, next) => {
     const newAccessToken = Jwt.sign({ id: userId }, "1m", SECRET_ACCESS_KEY);
 
     await UserModel.findByIdAndUpdate(data._id, {
-      refreshtoken: newRefreshToken,
+      $set: { refreshtoken: newRefreshToken },
     });
 
     const d1 = new Date();

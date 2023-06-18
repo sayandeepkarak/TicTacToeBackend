@@ -4,13 +4,13 @@ import Jwt from "../services/Jwt";
 
 const verifytoken = (req, res, next) => {
   const { accesstoken } = req.cookies;
-  // console.log(accesstoken);
   if (!accesstoken) {
     return next(OwnError.unAuthorizedError());
   }
   try {
     const { id } = Jwt.verify(accesstoken, SECRET_ACCESS_KEY);
     req.userId = id;
+
     next();
   } catch (error) {
     console.log(error);
