@@ -10,6 +10,7 @@ const verifytoken = (req, res, next) => {
   try {
     const { id } = Jwt.verify(accesstoken, SECRET_ACCESS_KEY);
     req.userId = id;
+
     next();
   } catch (error) {
     console.log(error);

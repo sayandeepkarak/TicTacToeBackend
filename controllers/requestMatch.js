@@ -2,8 +2,6 @@ import RoomModel from "../database/models/Room";
 
 export const requestMatch = async (waitListPlayers, socket, io, userId) => {
   if (waitListPlayers.length > 0) {
-    console.log(waitListPlayers.length);
-
     const users = [userId, waitListPlayers[0]];
     try {
       const newRoom = new RoomModel({
