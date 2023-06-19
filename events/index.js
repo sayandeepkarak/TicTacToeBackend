@@ -65,6 +65,8 @@ const createSocketServer = (server) => {
         setTimeout(() => {
           finishMatch(matchId, userDetails, io);
         }, 59000);
+      } else if (waitListPlayers.includes(userDetails.userId)) {
+        waitListPlayers.splice(0, 1);
       }
       console.log(`${userDetails.userName} disconnected`);
     });
