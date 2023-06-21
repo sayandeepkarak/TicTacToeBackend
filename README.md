@@ -107,6 +107,7 @@ To run this project, you will need to add the following environment variables to
 | Parameter  | Type     | Description                   |
 | :--------- | :------- | :---------------------------- |
 | `position` | `number` | **Required**. Player position |
+| `matchId`  | `string` | **Required**. Current MatchId |
 
 #### Get room members count
 
