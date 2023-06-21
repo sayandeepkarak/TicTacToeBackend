@@ -4,7 +4,6 @@ import generatetoken from "../controllers/auth/token";
 import getAllPlayers from "../controllers/users";
 import verifytoken from "../middlewares/accessVerify";
 import { recovermatch } from "../controllers/recoverMatch";
-import UserModel from "../database/models/User";
 import logout from "../controllers/auth/logout";
 
 const router = express.Router();
