@@ -1,6 +1,6 @@
 # TicTacToe backend
 
-It is the backend project of TicTacToe Online Game Project with react.
+It is the backend project of TicTacToe Online Game Project with Mern Stack.
 I built this with Node.js+Express.js. I used Socket.io for real time communication and room iteraction for gameplay.For authentication i used firebase GoogleProvider and for authorization i used jsonwebtoken in this project with refresh and access token fucntionality.
 
 ## Tech Stack
