@@ -19,8 +19,6 @@ To run this project, you will need to add the following environment variables to
 
 `DBURL`
 
-`EMAIL_SERVICE_USERNAME`
-
 `SECRET_KEY`
 
 `SECRET_ACCESS_KEY`
