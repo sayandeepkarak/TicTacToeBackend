@@ -1,6 +1,6 @@
 import http from "http";
 import express from "express";
-import { DBURL, PORT } from "./config";
+import { DBURL, FRONTEND_URL,PORT } from "./config";
 import createSocketServer from "./events";
 import connectToDb from "./database";
 import cors from "cors";
@@ -14,7 +14,7 @@ const port = PORT || 6000;
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["*"],
+    origin: FRONTEND_URL,
     credentials: true,
   })
 );
