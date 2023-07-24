@@ -1,7 +1,8 @@
 # TicTacToe backend
 
-It is the backend part of TicTacToe Online Game Project with react.
-I built this with Node.js+Express.js. I used Socket.io for real time communication and room iteraction for gameplay.For authentication i used firebase GoogleProvider and for authorization i used jsonwebtoken in this project with refresh and access token fucntionality.
+It is the backend part of TicTacToe Online Game Project with Mern Stack.
+I used Socket.io for real time communication and room iteraction for gameplay.For authentication i used firebase GoogleProvider and for authorization i used jsonwebtoken in this project with refresh and access token fucntionality.
+
 
 ## Tech Stack
 
@@ -18,8 +19,6 @@ To run this project, you will need to add the following environment variables to
 `PORT`
 
 `DBURL`
-
-`EMAIL_SERVICE_USERNAME`
 
 `SECRET_KEY`
 
@@ -107,6 +106,7 @@ To run this project, you will need to add the following environment variables to
 | Parameter  | Type     | Description                   |
 | :--------- | :------- | :---------------------------- |
 | `position` | `number` | **Required**. Player position |
+| `matchId`  | `string` | **Required**. Current MatchId |
 
 #### Get room members count
 
