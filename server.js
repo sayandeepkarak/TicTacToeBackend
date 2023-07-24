@@ -1,6 +1,6 @@
 import http from "http";
 import express from "express";
-import { DBURL, FRONTEND_URL, PORT } from "./config";
+import { DBURL, PORT } from "./config";
 import createSocketServer from "./events";
 import connectToDb from "./database";
 // import cors from "cors";
