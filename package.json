@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon -r esm server.js"
+    "dev": "nodemon -r esm server.js",
+    "start": "node -r esm server.js"
   },
   "keywords": [],
   "author": "Sayandeep Karak",
